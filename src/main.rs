@@ -21,6 +21,9 @@ fn main() {
         usage();
         std::process::exit(1);
     }
+    if args[1].starts_with("./") {
+        args[1] = String::from(args[1].split("./").nth(1).unwrap());
+    }
     args[1] = String::from(args[1].split('.').nth(0).unwrap());
     let from_path = Path::new(&args[1]);
     let to_path   = Path::new(&args[2]);
