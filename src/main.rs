@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::io::Write;
 use std::fs::rename;
 
@@ -15,16 +15,37 @@ fn usage() {
     ).unwrap();
 }
 
+fn extension(entry: &PathBuf) -> Option<String> {
+    let file_name = entry
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap();
+    let idx = match file_name.find('.') {
+        Some(idx) => idx,
+        None      => {return None}
+    };
+    let extension: String = file_name.chars().skip(idx).collect();
+    Some(extension)
+}
+
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
     if args.len()<3 {
         usage();
         std::process::exit(1);
     }
-    if args[1].starts_with("./") {
-        args[1] = String::from(args[1].split("./").nth(1).unwrap());
+    if cfg!(target_os = "windows") {
+        for i in 1..args.len() {
+            args[i] = String::from(args[i].trim_start_matches(".\\"));
+            args[i] = String::from(args[i].trim_end_matches('.'));
+        }
+    } else {
+        for i in 1..args.len() {
+            args[i] = String::from(args[i].trim_start_matches("./"));
+            args[i] = String::from(args[i].trim_end_matches('.'));
+        }
     }
-    args[1] = String::from(args[1].split('.').nth(0).unwrap());
     let from_path = Path::new(&args[1]);
     let to_path   = Path::new(&args[2]);
     println!("from_path: {:?}", from_path);
@@ -45,8 +66,14 @@ fn main() {
                 .unwrap()
                 .starts_with(prefix)
             {
-                let to_name = entry.to_str().unwrap().replace(prefix, to_path.file_name().expect("Invalid arguments").to_str().unwrap());
-                rename(&entry, &to_name).expect("Rename failed");
+                let extension = extension(&entry);
+                let to_name   = match extension {
+                    Some(mut ext) => {
+                        ext.insert_str(0, &to_path.to_str().unwrap());
+                        ext
+                    }
+                    None => {to_path.to_str().unwrap().to_string()}
+                };
                 println!("{} => {}", entry.display(), &to_name);
             }
         }
